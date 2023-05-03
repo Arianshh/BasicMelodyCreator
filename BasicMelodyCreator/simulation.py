@@ -1,15 +1,17 @@
 import pygame
 import math
-import enum
+import random
 
 from note import *
-from chord import *
 from scale import *
 
 
 class Mode(enum.Enum):
     SCALE = 'scale'
     CHORD = 'chord'
+
+
+COLORS = [(255, 0, 0), (255, 165, 0), (255, 255, 0), (0, 128, 0), (0, 0, 255), (75, 0, 130), (238, 130, 238)]
 
 
 class Simulation:
@@ -24,9 +26,6 @@ class Simulation:
         self.initial_y = initial_y
         self.clock = pygame.time.Clock()
 
-        # initial_x = WIDTH / 2 + r * math.cos(math.radians(angle_x))
-        # initial_y = HEIGHT / 2 + r * math.sin(math.radians(angle_y))
-
     def initialize(self):
         mode = input('Select Mode: 1-Scale 2-Chord\n')
         while mode not in ['1', '2']:
@@ -37,70 +36,68 @@ class Simulation:
             note = input('Select Note: C, D, E, F, G, A, B\n')
             while note.upper() not in ['C', 'D', 'E', 'F', 'G', 'A', 'B']:
                 note = input('Wrong Input.\nSelect Note: Select Note: C, D, E, F, G, A, B\nn')
-            self.note = note.upper()
+            note = note.upper()
             scale = input('Select scale: ' + ', '.join([s.value for s in ScaleName]) + '\n')
             while scale not in [s.value for s in ScaleName]:
                 scale = input('Wrong Input.\nSelect scale: ' + ', '.join([s.value for s in ScaleName]) + '\n')
-            self.variation = [s for s in ScaleName if s.value == scale][0]
+            variation = [s for s in ScaleName if s.value == scale][0]
+            scale = Scale(variation, note)
+            note_positions = self.generate_notes_coordinates(scale)
+            note_play_list = []
+            for i, note in enumerate(scale.notes):
+                note_play_list += [
+                    NotePlay(note, random.choice(COLORS), note_positions[i][0], note_positions[i][1], True)]
+            self.note_play_list = note_play_list
         elif mode == Mode.CHORD:
             pass
-        self.run_function = self.fetch_run_function
 
-    def fetch_run_function(self, mode, note, variation):
+    def generate_notes_coordinates(self, variation):
+        if self.mode == Mode.SCALE:
+            scale = variation
+            notes = scale.notes
+            num_of_notes = len(notes)
+            max_radius = min(self.width, self.width) // (2 * math.ceil(math.sqrt(num_of_notes)))
+            center_x, center_y = self.width // 2, self.height // 2
+            circle_positions = []
+            angle_between_circles = 2 * math.pi / num_of_notes
+            for i in range(num_of_notes):
+                angle = i * angle_between_circles
+                x = center_x + int(1.2 * max_radius * math.cos(angle))
+                y = center_y + int(1.2 * max_radius * math.sin(angle))
+                circle_positions.append((x, y))
+            return circle_positions
+
+    def run(self):
+        if self.mode == Mode.SCALE:
+            self.run_scale()
+
+    def run_scale(self):
         pygame.init()
-        if mode == Mode.SCALE:
-            scale = Scale(variation, note)
-            return self.run_scale(scale)
-        elif mode == Mode.CHORD:
-            return self.run_chord(note, variation)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+        self.screen.fill(self.background_color)
 
-    def run_scale(self, scale):
-        print(scale.notes)
-        # for event in pygame.event.get():
-        #     if event.type == pygame.QUIT:
-        #         pygame.quit()
-        #         quit()
-        # self.screen.fill(self.background_color)
-        #
-        # dot_x = self.width / 2 + self.movement.radius * math.cos(math.radians(self.movement.angle_x))
-        # dot_y = self.height / 2 + self.movement.radius * math.sin(math.radians(self.movement.angle_y))
-        # self.movement.angle_x += self.movement.speed_x
-        # self.movement.angle_y += self.movement.speed_y
-        # if pygame.math.Vector2((initial_x, initial_y)).distance_to(
-        #         pygame.math.Vector2(dot_x, dot_y)) < 30:
-        #     chord_cycle += 1
-        #     if chord_cycle == change_limit:
-        #         c_change = True
-        #         chord_cycle = 0
+        dot_x = self.width / 2 + self.movement.radius * math.cos(math.radians(self.movement.angle_x))
+        dot_y = self.height / 2 + self.movement.radius * math.sin(math.radians(self.movement.angle_y))
+        self.movement.angle_x += self.movement.speed_x
+        self.movement.angle_y += self.movement.speed_y
 
-        # if c_change:
-        #     c_change = False
-        #     chord_option = chord_option + 1 if chord_option < len(chords) - 1 else 0
-
-        # for i, note in enumerate(chords[chord_option]):
-        #     if pygame.math.Vector2((note.x_location, note.y_location)).distance_to(
-        #             pygame.math.Vector2(dot_x, dot_y)) < 50:
-        #         if note.play:
-        #             note.play_note(pygame)
-        #             note.play = False
-        #     # Draw the circles on the screen
-        #     if not note.play and (pygame.math.Vector2((note.x_location, note.y_location)).distance_to(
-        #             pygame.math.Vector2(dot_x, dot_y)) > 50):
-        #         note.play = True
-        #     if i == 0:
-        #         pygame.draw.circle(self.screen, c1, (note.x_location, note.y_location), 60)
-        #     elif i == 1:
-        #         pygame.draw.circle(self.screen, c2, (note.x_location, note.y_location), 60)
-        #     elif i == 2:
-        #         pygame.draw.circle(self.screen, c3, (note.x_location, note.y_location), 60)
-        #     else:
-        #         pygame.draw.circle(self.screen, c4, (note.x_location, note.y_location), 60)
-        #
-        # # Draw the dot on the screen
-        # pygame.draw.circle(self.screen, (0, 0, 0), (dot_x, dot_y), 5)
-        #
-        # # Update the display
-        # pygame.display.flip()
+        for i, note in enumerate(self.note_play_list):
+            if pygame.math.Vector2((note.x_location, note.y_location)).distance_to(
+                    pygame.math.Vector2(dot_x, dot_y)) < 50:
+                if note.play:
+                    note.play_note(pygame)
+                    note.play = False
+            if not note.play and (pygame.math.Vector2((note.x_location, note.y_location)).distance_to(
+                    pygame.math.Vector2(dot_x, dot_y)) > 50):
+                note.play = True
+            for c_index in range(0, len(self.note_play_list)):
+                if i == c_index:
+                    pygame.draw.circle(self.screen, note.color, (note.x_location, note.y_location), 60)
+        pygame.draw.circle(self.screen, (0, 0, 0), (dot_x, dot_y), 5)
+        pygame.display.flip()
 
     def run_chord(self, note, variation):
         pass

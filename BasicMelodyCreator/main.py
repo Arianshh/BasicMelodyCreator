@@ -11,5 +11,5 @@ simulation = Simulation(60, WIDTH, HEIGHT, movement, initial_x, initial_y)
 simulation.initialize()
 
 while True:
-    simulation.run_function(simulation.mode, simulation.note, simulation.variation)
+    simulation.run()
     simulation.clock.tick(simulation.frame_per_second)
